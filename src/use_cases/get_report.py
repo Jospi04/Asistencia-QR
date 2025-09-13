@@ -8,6 +8,19 @@ from src.domain.repositories import (
 from typing import List, Dict, Optional
 import calendar
 
+
+def minutos_a_hhmm(total_minutos: int) -> str:
+    """
+    Convierte minutos totales a formato HH:MM
+    Ej: 90 → "1:30", 16 → "0:16", 480 → "8:00"
+    """
+    if total_minutos < 0:
+        total_minutos = 0
+    horas = total_minutos // 60
+    minutos = total_minutos % 60
+    return f"{horas}:{minutos:02d}"
+
+
 class GetReportUseCase:
     def __init__(self, 
                  empleado_repository: EmpleadoRepository,
@@ -35,7 +48,13 @@ class GetReportUseCase:
             "dias_laborables": 0,
             "total_horas_normales": 0,
             "total_horas_extras": 0,
-            "total_faltas": 0
+            "total_faltas": 0,
+            "total_turnos_manana": 0,
+            "total_turnos_tarde": 0,
+            "total_faltas_manana": 0,
+            "total_faltas_tarde": 0,
+            "total_retardos_manana": 0,
+            "total_retardos_tarde": 0
         }
         
         for empleado in empleados:
@@ -51,11 +70,17 @@ class GetReportUseCase:
                 "id": empleado.id,
                 "nombre": empleado.nombre,
                 "dni": empleado.dni,
-                "asistencias": len([a for a in asistencias if a.estado_dia in ["COMPLETO", "INCOMPLETO"]]),
+                "asistencias": stats["asistencias_completas"] + stats["asistencias_incompletas"],
                 "faltas": stats["faltas"],
-                "horas_normales": stats["horas_normales"],
-                "horas_extras": stats["horas_extras"],
-                "retardos": stats["retardos"],
+                "horas_normales": minutos_a_hhmm(int(stats["horas_normales"] * 60)),
+                "horas_extras": minutos_a_hhmm(int(stats["horas_extras"] * 60)),
+                "retardos": stats["retardos_manana"] + stats["retardos_tarde"],
+                "turnos_manana": stats["turnos_manana"],
+                "turnos_tarde": stats["turnos_tarde"],
+                "faltas_manana": stats["faltas_manana"],
+                "faltas_tarde": stats["faltas_tarde"],
+                "retardos_manana": stats["retardos_manana"],
+                "retardos_tarde": stats["retardos_tarde"],
                 "porcentaje_asistencia": stats["porcentaje_asistencia"]
             })
             
@@ -63,6 +88,12 @@ class GetReportUseCase:
             totales["total_horas_normales"] += stats["horas_normales"]
             totales["total_horas_extras"] += stats["horas_extras"]
             totales["total_faltas"] += stats["faltas"]
+            totales["total_turnos_manana"] += stats["turnos_manana"]
+            totales["total_turnos_tarde"] += stats["turnos_tarde"]
+            totales["total_faltas_manana"] += stats["faltas_manana"]
+            totales["total_faltas_tarde"] += stats["faltas_tarde"]
+            totales["total_retardos_manana"] += stats["retardos_manana"]
+            totales["total_retardos_tarde"] += stats["retardos_tarde"]
         
         # Calcular días laborables del mes
         totales["dias_laborables"] = self._contar_dias_laborables(mes, anio)
@@ -101,14 +132,18 @@ class GetReportUseCase:
         # Detalle diario
         detalle_diario = []
         for asistencia in asistencias:
+            # Convertir total_horas_trabajadas a minutos → HH:MM
+            total_minutos = int(asistencia.total_horas_trabajadas * 60)
+            total_horas_format = minutos_a_hhmm(total_minutos)
+
             detalle_diario.append({
                 "fecha": asistencia.fecha,
                 "entrada_manana": str(asistencia.entrada_manana_real) if asistencia.entrada_manana_real else None,
                 "salida_manana": str(asistencia.salida_manana_real) if asistencia.salida_manana_real else None,
                 "entrada_tarde": str(asistencia.entrada_tarde_real) if asistencia.entrada_tarde_real else None,
                 "salida_tarde": str(asistencia.salida_tarde_real) if asistencia.salida_tarde_real else None,
-                "total_horas": asistencia.total_horas_trabajadas,
-                "horas_extras": asistencia.horas_extras,
+                "total_horas": total_horas_format,
+                "horas_extras": minutos_a_hhmm(int(asistencia.horas_extras * 60)),
                 "estado": asistencia.estado_dia
             })
         
@@ -139,35 +174,66 @@ class GetReportUseCase:
         total_horas_normales = 0
         total_horas_extras = 0
         faltas = 0
-        retardos = 0
         asistencias_completas = 0
-        
+        asistencias_incompletas = 0
+        turnos_manana = 0
+        turnos_tarde = 0
+        faltas_manana = 0
+        faltas_tarde = 0
+        retardos_manana = 0
+        retardos_tarde = 0
+
         for asistencia in asistencias:
             if asistencia.estado_dia == "FALTA":
                 faltas += 1
+                faltas_manana += 1
+                faltas_tarde += 1
             elif asistencia.estado_dia == "COMPLETO":
                 asistencias_completas += 1
                 total_horas_normales += asistencia.horas_normales
                 total_horas_extras += asistencia.horas_extras
+                turnos_manana += 1
+                turnos_tarde += 1
+                if asistencia.tardanza_manana:
+                    retardos_manana += 1
+                if asistencia.tardanza_tarde:
+                    retardos_tarde += 1
             elif asistencia.estado_dia == "INCOMPLETO":
-                # Considerar como medio día o retardo
-                retardos += 1
+                asistencias_incompletas += 1
                 total_horas_normales += asistencia.horas_normales
                 total_horas_extras += asistencia.horas_extras
-        
-        # Calcular porcentaje de asistencia
+                if asistencia.asistio_manana:
+                    turnos_manana += 1
+                    if asistencia.tardanza_manana:
+                        retardos_manana += 1
+                else:
+                    faltas_manana += 1
+                if asistencia.asistio_tarde:
+                    turnos_tarde += 1
+                    if asistencia.tardanza_tarde:
+                        retardos_tarde += 1
+                else:
+                    faltas_tarde += 1
+
         total_dias = len(asistencias)
         porcentaje_asistencia = 0
         if total_dias > 0:
-            porcentaje_asistencia = round((asistencias_completas / total_dias) * 100, 2)
-        
+            dias_con_asistencia = asistencias_completas + asistencias_incompletas
+            porcentaje_asistencia = round((dias_con_asistencia / total_dias) * 100, 2)
+
         return {
             "horas_normales": round(total_horas_normales, 2),
             "horas_extras": round(total_horas_extras, 2),
             "faltas": faltas,
-            "retardos": retardos,
+            "retardos_manana": retardos_manana,
+            "retardos_tarde": retardos_tarde,
             "asistencias_completas": asistencias_completas,
-            "porcentaje_asistencia": porcentaje_asistencia
+            "asistencias_incompletas": asistencias_incompletas,
+            "porcentaje_asistencia": porcentaje_asistencia,
+            "turnos_manana": turnos_manana,
+            "turnos_tarde": turnos_tarde,
+            "faltas_manana": faltas_manana,
+            "faltas_tarde": faltas_tarde
         }
     
     def _get_empresa_info(self, empresa_id: int) -> dict:
@@ -208,24 +274,3 @@ class GetReportRequest:
         self.anio = anio or datetime.now().year
         self.empleado_id = empleado_id
         self.mes = mes
-
-# from src.infrastructure.mysql_connection import get_connection
-
-# def get_report():
-#     connection = get_connection()
-#     cursor = connection.cursor(dictionary=True)
-
-#     query = """
-#         SELECT a.id, e.nombre, e.dni, e.empresa,
-#                a.entrada, a.salida,
-#                TIMESTAMPDIFF(HOUR, a.entrada, a.salida) AS horas_trabajadas
-#         FROM asistencias a
-#         INNER JOIN empleados e ON a.empleado_id = e.id
-#         ORDER BY a.entrada DESC
-#     """
-#     cursor.execute(query)
-#     report_data = cursor.fetchall()
-
-#     cursor.close()
-#     connection.close()
-#     return report_data

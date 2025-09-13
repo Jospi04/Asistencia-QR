@@ -36,6 +36,9 @@ class HorarioEstandar:
         self.entrada_tarde = entrada_tarde
         self.salida_tarde = salida_tarde
 
+from datetime import datetime, time
+from typing import Optional
+
 class Asistencia:
     def __init__(self, id: int = None, empleado_id: int = None, fecha: str = "",
                  entrada_manana_real: time = None, salida_manana_real: time = None,
@@ -53,6 +56,14 @@ class Asistencia:
         self.horas_normales = horas_normales
         self.horas_extras = horas_extras
         self.estado_dia = estado_dia
+        
+        # ✅ Nuevos campos para control por turno
+        self.asistio_manana: bool = False
+        self.asistio_tarde: bool = False
+        self.tardanza_manana: bool = False
+        self.tardanza_tarde: bool = False
+        
+        # Campos de auditoría
         self.created_at: Optional[datetime] = None
         self.updated_at: Optional[datetime] = None
 

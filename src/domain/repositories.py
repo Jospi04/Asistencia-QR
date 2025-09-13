@@ -1,6 +1,35 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 from .entities import *
+from datetime import timedelta, time
+def convertir_a_time(valor) -> Optional[time]:
+    """
+    Convierte un valor de MySQL (puede ser time, timedelta, str o None) a datetime.time
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, time):
+        return valor
+    if isinstance(valor, timedelta):
+        total_seconds = int(valor.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        # Asegurar que las horas estén en rango 0-23 (por si acaso)
+        hours = hours % 24
+        return time(hours, minutes, seconds)
+    if isinstance(valor, str):
+        try:
+            # Intentar parsear 'HH:MM:SS'
+            parts = valor.split(':')
+            if len(parts) >= 2:
+                h = int(parts[0])
+                m = int(parts[1])
+                s = int(parts[2]) if len(parts) > 2 else 0
+                return time(h % 24, m, s)
+        except:
+            return None
+    return None
 
 class EmpresaRepository(ABC):
     @abstractmethod

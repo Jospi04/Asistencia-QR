@@ -94,3 +94,11 @@ class MySQLConnection:
             print(f"Error ejecutando insert: {e}")
             connection.rollback()
             return None
+
+
+# --- NUEVO: instancia global y función helper ---
+_db_instance = MySQLConnection()
+
+def get_connection() -> Optional[mysql.connector.MySQLConnection]:
+    """Devuelve una conexión activa a la BD"""
+    return _db_instance.get_connection()

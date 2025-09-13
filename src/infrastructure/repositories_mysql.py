@@ -4,6 +4,37 @@ from .mysql_connection import MySQLConnection
 from src.domain.repositories import *
 from src.domain.entities import *
 
+# ✅ Función de ayuda para convertir cualquier tipo de hora de MySQL a time
+def convertir_a_time(valor) -> Optional[time]:
+    """
+    Convierte un valor de MySQL (puede ser time, timedelta, str o None) a datetime.time
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, time):
+        return valor
+    if isinstance(valor, timedelta):
+        total_seconds = int(valor.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+        # Asegurar que las horas estén en rango 0-23 (por si acaso)
+        hours = hours % 24
+        return time(hours, minutes, seconds)
+    if isinstance(valor, str):
+        try:
+            # Intentar parsear 'HH:MM:SS'
+            parts = valor.split(':')
+            if len(parts) >= 2:
+                h = int(parts[0])
+                m = int(parts[1])
+                s = int(parts[2]) if len(parts) > 2 else 0
+                return time(h % 24, m, s)
+        except:
+            return None
+    return None
+
+
 class EmpresaRepositoryMySQL(EmpresaRepository):
     def __init__(self, db_connection: MySQLConnection):
         self.db = db_connection
@@ -64,6 +95,7 @@ class EmpresaRepositoryMySQL(EmpresaRepository):
     def delete(self, id: int) -> bool:
         query = "DELETE FROM EMPRESAS WHERE id = %s"
         return self.db.execute_update(query, (id,))
+
 
 class EmpleadoRepositoryMySQL(EmpleadoRepository):
     def __init__(self, db_connection: MySQLConnection):
@@ -198,6 +230,7 @@ class EmpleadoRepositoryMySQL(EmpleadoRepository):
             print(f"Error eliminando empleado {id}: {e}")
             return False
 
+
 class AsistenciaRepositoryMySQL(AsistenciaRepository):
     def __init__(self, db_connection: MySQLConnection):
         self.db = db_connection
@@ -216,10 +249,10 @@ class AsistenciaRepositoryMySQL(AsistenciaRepository):
             id=row['id'],
             empleado_id=row['empleado_id'],
             fecha=str(row['fecha']),
-            entrada_manana_real=row['entrada_manana_real'],
-            salida_manana_real=row['salida_manana_real'],
-            entrada_tarde_real=row['entrada_tarde_real'],
-            salida_tarde_real=row['salida_tarde_real'],
+            entrada_manana_real=convertir_a_time(row['entrada_manana_real']),
+            salida_manana_real=convertir_a_time(row['salida_manana_real']),
+            entrada_tarde_real=convertir_a_time(row['entrada_tarde_real']),
+            salida_tarde_real=convertir_a_time(row['salida_tarde_real']),
             total_horas_trabajadas=float(row['total_horas_trabajadas'] or 0),
             horas_normales=float(row['horas_normales'] or 8),
             horas_extras=float(row['horas_extras'] or 0),
@@ -245,10 +278,10 @@ class AsistenciaRepositoryMySQL(AsistenciaRepository):
                 id=row['id'],
                 empleado_id=row['empleado_id'],
                 fecha=str(row['fecha']),
-                entrada_manana_real=row['entrada_manana_real'],
-                salida_manana_real=row['salida_manana_real'],
-                entrada_tarde_real=row['entrada_tarde_real'],
-                salida_tarde_real=row['salida_tarde_real'],
+                entrada_manana_real=convertir_a_time(row['entrada_manana_real']),
+                salida_manana_real=convertir_a_time(row['salida_manana_real']),
+                entrada_tarde_real=convertir_a_time(row['entrada_tarde_real']),
+                salida_tarde_real=convertir_a_time(row['salida_tarde_real']),
                 total_horas_trabajadas=float(row['total_horas_trabajadas'] or 0),
                 horas_normales=float(row['horas_normales'] or 8),
                 horas_extras=float(row['horas_extras'] or 0),
@@ -275,10 +308,10 @@ class AsistenciaRepositoryMySQL(AsistenciaRepository):
                 id=row['id'],
                 empleado_id=row['empleado_id'],
                 fecha=str(row['fecha']),
-                entrada_manana_real=row['entrada_manana_real'],
-                salida_manana_real=row['salida_manana_real'],
-                entrada_tarde_real=row['entrada_tarde_real'],
-                salida_tarde_real=row['salida_tarde_real'],
+                entrada_manana_real=convertir_a_time(row['entrada_manana_real']),
+                salida_manana_real=convertir_a_time(row['salida_manana_real']),
+                entrada_tarde_real=convertir_a_time(row['entrada_tarde_real']),
+                salida_tarde_real=convertir_a_time(row['salida_tarde_real']),
                 total_horas_trabajadas=float(row['total_horas_trabajadas'] or 0),
                 horas_normales=float(row['horas_normales'] or 8),
                 horas_extras=float(row['horas_extras'] or 0),
@@ -372,6 +405,7 @@ class AsistenciaRepositoryMySQL(AsistenciaRepository):
             print(f"Error registrando alerta: {e}")
             return False
 
+
 class HorarioEstandarRepositoryMySQL(HorarioEstandarRepository):
     def __init__(self, db_connection: MySQLConnection):
         self.db = db_connection
@@ -419,6 +453,7 @@ class HorarioEstandarRepositoryMySQL(HorarioEstandarRepository):
             horario.entrada_tarde, horario.salida_tarde, horario.id
         ))
         return horario
+
 
 class EscaneoTrackingRepositoryMySQL(EscaneoTrackingRepository):
     def __init__(self, db_connection: MySQLConnection):
