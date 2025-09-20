@@ -4,8 +4,10 @@ from datetime import datetime
 import pandas as pd
 from io import BytesIO
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 import calendar
+from apscheduler.schedulers.background import BackgroundScheduler  # ✅ Agregado
 
 # Importar infraestructura
 from src.infrastructure.mysql_connection import MySQLConnection
@@ -21,7 +23,7 @@ from src.infrastructure.repositories_mysql import (
 from src.use_cases.register_employee import RegisterEmployeeUseCase
 from src.use_cases.mark_attendance import MarkAttendanceUseCase
 from src.use_cases.list_companies import ListCompaniesUseCase
-from src.use_cases.get_report import GetReportUseCase
+from src.use_cases.get_report import GetReportUseCase, minutos_a_hhmm
 
 # Importar QR generator
 from src.infrastructure.qr_generator import QRGenerator
@@ -48,6 +50,26 @@ get_report_use_case = GetReportUseCase(empleado_repo, asistencia_repo, empresa_r
 # Inicializar QR generator
 qr_generator = QRGenerator()
 
+# ✅ Programar job semanal
+scheduler = BackgroundScheduler()
+
+def job_reporte_semanal():
+    """Job semanal que envía reportes a la dueña y a los empleados"""
+    print("📅 Iniciando job semanal...")
+    
+    # 1. Enviar reportes a la dueña (uno por empresa)
+    print("📧 Enviando reportes a la dueña...")
+    mark_attendance_use_case.generar_reporte_semanal()
+    
+    # 2. Enviar reportes individuales a los empleados
+    print("📧 Enviando reportes a los empleados...")
+    mark_attendance_use_case.enviar_reporte_individual_empleados()
+    
+    print("✅ Job semanal completado")
+
+scheduler.add_job(job_reporte_semanal, 'cron', day_of_week='mon', hour=8, minute=0)
+scheduler.start()
+
 def obtener_nombre_mes(numero_mes):
     """Obtiene el nombre del mes por su número"""
     meses = [
@@ -59,7 +81,7 @@ def obtener_nombre_mes(numero_mes):
 # Rutas principales
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('scan.html')
 
 # Rutas de administración
 @app.route('/admin')
@@ -339,89 +361,158 @@ def export_report_excel():
             flash('Empresa ID requerido', 'error')
             return redirect(url_for('reports'))
         
-        # Obtener datos del reporte
-        reporte = get_report_use_case.execute_monthly_report(empresa_id, mes, anio)
-        
-        if 'error' in reporte:
-            flash(reporte['error'], 'error')
-            return redirect(url_for('reports'))
+        # Obtener empleados de la empresa
+        empleados = empleado_repo.get_by_empresa_id(empresa_id)
+        primer_dia = f"{anio}-{mes:02d}-01"
+        ultimo_dia = f"{anio}-{mes:02d}-{calendar.monthrange(anio, mes)[1]}"
         
         # Crear archivo Excel en memoria
         output = BytesIO()
-        
-        # Crear workbook
         wb = Workbook()
+        ws = wb.active
+        ws.title = "Reporte Diario"
         
-        # Hoja 1: Reporte de Empleados
-        ws1 = wb.active
-        ws1.title = "Reporte Empleados"
+        # Estilos
+        header_font = Font(bold=True)
+        header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+        alignment_center = Alignment(horizontal="center", vertical="center")
         
-        # Encabezados
-        headers = ['Nombre', 'DNI', 'Asistencias', 'Faltas', 'Horas Normales', 'Horas Extras', 'Porcentaje Asistencia (%)']
-        ws1.append(headers)
+        # Estilo de bordes
+        thin_border = Border(
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
+        )
         
-        # Estilo para encabezados
-        for col in range(1, len(headers) + 1):
-            cell = ws1.cell(row=1, column=col)
-            cell.font = Font(bold=True)
-            cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-            cell.alignment = Alignment(horizontal="center")
+        fila_actual = 1
         
-        # Datos de empleados
-        for empleado in reporte['empleados']:
-            ws1.append([
-                empleado['nombre'] or '',
-                empleado['dni'] or '',
-                empleado['asistencias'] or 0,
-                empleado['faltas'] or 0,
-                empleado['horas_normales'] or 0,
-                empleado['horas_extras'] or 0,
-                empleado['porcentaje_asistencia'] or 0
-            ])
+        for empleado in empleados:
+            # Título del empleado
+            ws.merge_cells(start_row=fila_actual, start_column=1, end_row=fila_actual, end_column=8)
+            titulo_cell = ws.cell(row=fila_actual, column=1, value=f"EMPLEADO: {empleado.nombre.upper()}")
+            titulo_cell.font = Font(bold=True, size=14)
+            titulo_cell.fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+            titulo_cell.alignment = Alignment(horizontal="center", vertical="center")
+            fila_actual += 1
+            
+            # Encabezados
+            headers = ['DÍA', 'ENTRADA_MAÑANA', 'SALIDA_MAÑANA', 'TOTAL_MAÑANA', 
+                      'ENTRADA_TARDE', 'SALIDA_TARDE', 'TOTAL_TARDE', 'TOTAL_DÍA']
+            for col, header in enumerate(headers, 1):
+                cell = ws.cell(row=fila_actual, column=col, value=header)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = alignment_center
+                cell.border = thin_border
+            fila_actual += 1
+            
+            # Variables para totales del mes
+            total_manana_minutos = 0
+            total_tarde_minutos = 0
+            
+            # Generar todos los días del mes
+            dias_del_mes = calendar.monthrange(anio, mes)[1]
+            
+            for dia in range(1, dias_del_mes + 1):
+                fecha = f"{anio}-{mes:02d}-{dia:02d}"
+                
+                # Buscar asistencia para ese día y empleado
+                asistencia = asistencia_repo.get_by_empleado_and_fecha(empleado.id, fecha)
+                
+                if asistencia:
+                    # Calcular totales
+                    total_manana = ""
+                    if asistencia.entrada_manana_real and asistencia.salida_manana_real:
+                        minutos_manana = int((asistencia.salida_manana_real.hour * 60 + asistencia.salida_manana_real.minute) - 
+                                           (asistencia.entrada_manana_real.hour * 60 + asistencia.entrada_manana_real.minute))
+                        total_manana = minutos_a_hhmm(max(0, minutos_manana))
+                        # Sumar al total del mes
+                        h, m = map(int, total_manana.split(":"))
+                        total_manana_minutos += h * 60 + m
+                    
+                    total_tarde = ""
+                    if asistencia.entrada_tarde_real and asistencia.salida_tarde_real:
+                        minutos_tarde = int((asistencia.salida_tarde_real.hour * 60 + asistencia.salida_tarde_real.minute) - 
+                                          (asistencia.entrada_tarde_real.hour * 60 + asistencia.entrada_tarde_real.minute))
+                        total_tarde = minutos_a_hhmm(max(0, minutos_tarde))
+                        # Sumar al total del mes
+                        h, m = map(int, total_tarde.split(":"))
+                        total_tarde_minutos += h * 60 + m
+                    
+                    # Calcular total del día
+                    total_dia_minutos = 0
+                    if total_manana:
+                        h, m = map(int, total_manana.split(":"))
+                        total_dia_minutos += h * 60 + m
+                    if total_tarde:
+                        h, m = map(int, total_tarde.split(":"))
+                        total_dia_minutos += h * 60 + m
+                    total_dia = minutos_a_hhmm(total_dia_minutos)
+                    
+                    # Agregar fila con datos
+                    valores = [
+                        dia,
+                        str(asistencia.entrada_manana_real) if asistencia.entrada_manana_real else "",
+                        str(asistencia.salida_manana_real) if asistencia.salida_manana_real else "",
+                        total_manana,
+                        str(asistencia.entrada_tarde_real) if asistencia.entrada_tarde_real else "",
+                        str(asistencia.salida_tarde_real) if asistencia.salida_tarde_real else "",
+                        total_tarde,
+                        total_dia
+                    ]
+                else:
+                    # Agregar fila vacía para días sin asistencia
+                    valores = [
+                        dia,
+                        "", "", "", "", "", "", ""
+                    ]
+                
+                # Agregar valores y aplicar bordes
+                for col, valor in enumerate(valores, 1):
+                    cell = ws.cell(row=fila_actual, column=col, value=valor)
+                    cell.border = thin_border
+                    if col == 1:  # Centrar día
+                        cell.alignment = Alignment(horizontal="center")
+                
+                fila_actual += 1
+            
+            # Fila de totales del mes
+            total_manana_mes = minutos_a_hhmm(total_manana_minutos)
+            total_tarde_mes = minutos_a_hhmm(total_tarde_minutos)
+            total_dia_mes = minutos_a_hhmm(total_manana_minutos + total_tarde_minutos)
+            
+            # Agregar fila de totales
+            valores_totales = [
+                "TOTAL MES",
+                "", "", total_manana_mes,
+                "", "", total_tarde_mes,
+                total_dia_mes
+            ]
+            for col, valor in enumerate(valores_totales, 1):
+                cell = ws.cell(row=fila_actual, column=col, value=valor)
+                cell.font = Font(bold=True)
+                cell.fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
+                cell.border = thin_border
+                if col == 1:  # Centrar "TOTAL MES"
+                    cell.alignment = Alignment(horizontal="center")
+            fila_actual += 1
+            
+            # Agregar espacio entre empleados
+            fila_actual += 1
         
         # Ajustar ancho de columnas
-        column_widths = [20, 15, 12, 8, 15, 15, 20]
+        column_widths = [8, 15, 15, 15, 15, 15, 15, 15]
         for i, width in enumerate(column_widths, 1):
-            ws1.column_dimensions[chr(64 + i)].width = width
-        
-        # Hoja 2: Resumen
-        ws2 = wb.create_sheet("Resumen")
-        
-        # Datos de resumen
-        resumen_data = [
-            ['Concepto', 'Valor'],
-            ['Empresa', reporte['empresa']['nombre'] if reporte['empresa'] else ''],
-            ['Período', f"{obtener_nombre_mes(mes)} {anio}"],
-            ['Fecha Inicio', reporte['periodo']['primer_dia'] if reporte['periodo'] else ''],
-            ['Fecha Fin', reporte['periodo']['ultimo_dia'] if reporte['periodo'] else ''],
-            ['Días Laborables', reporte['totales']['dias_laborables'] if reporte['totales'] else 0],
-            ['Total Empleados', reporte['totales']['total_empleados'] if reporte['totales'] else 0],
-            ['Total Horas Normales', reporte['totales']['total_horas_normales'] if reporte['totales'] else 0],
-            ['Total Horas Extras', reporte['totales']['total_horas_extras'] if reporte['totales'] else 0],
-            ['Total Faltas', reporte['totales']['total_faltas'] if reporte['totales'] else 0],
-            ['Generado', datetime.now().strftime('%d/%m/%Y %H:%M:%S')]
-        ]
-        
-        for row in resumen_data:
-            ws2.append(row)
-        
-        # Estilo para encabezados del resumen
-        ws2.cell(row=1, column=1).font = Font(bold=True)
-        ws2.cell(row=1, column=2).font = Font(bold=True)
-        ws2.cell(row=1, column=1).fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-        ws2.cell(row=1, column=2).fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-        
-        # Ajustar ancho de columnas del resumen
-        ws2.column_dimensions['A'].width = 25
-        ws2.column_dimensions['B'].width = 30
+            ws.column_dimensions[get_column_letter(i)].width = width
         
         # Guardar el workbook en el buffer
         wb.save(output)
         output.seek(0)
         
         # Preparar nombre de archivo
-        nombre_empresa = reporte['empresa']['nombre'].replace(' ', '_') if reporte['empresa'] else 'empresa'
-        nombre_archivo = f"reporte_asistencia_{nombre_empresa}_{mes}_{anio}.xlsx"
+        nombre_empresa = empresa_repo.get_by_id(empresa_id).nombre.replace(' ', '_') if empresa_repo.get_by_id(empresa_id) else 'empresa'
+        nombre_archivo = f"reporte_diario_{nombre_empresa}_{mes}_{anio}.xlsx"
         
         return send_file(
             output,

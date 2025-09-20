@@ -97,6 +97,10 @@ class GetReportUseCase:
         
         # Calcular días laborables del mes
         totales["dias_laborables"] = self._contar_dias_laborables(mes, anio)
+
+        # ✅ Redondear totales a 2 decimales para evitar errores de representación
+        totales["total_horas_normales"] = round(totales["total_horas_normales"], 2)
+        totales["total_horas_extras"] = round(totales["total_horas_extras"], 2)
         
         return {
             "empresa": self._get_empresa_info(empresa_id),
