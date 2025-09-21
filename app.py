@@ -16,7 +16,8 @@ from src.infrastructure.repositories_mysql import (
     EmpleadoRepositoryMySQL,
     AsistenciaRepositoryMySQL,
     HorarioEstandarRepositoryMySQL,
-    EscaneoTrackingRepositoryMySQL
+    EscaneoTrackingRepositoryMySQL,
+    AdministradorRepository  # ✅ Agregado
 )
 
 # Importar use cases
@@ -95,13 +96,19 @@ def admin_dashboard():
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     if request.method == 'POST':
-        # Aquí iría la lógica de autenticación
         username = request.form['username']
         password = request.form['password']
         
-        # Por ahora, login simulado
-        if username == 'admin' and password == 'admin':
+        # ✅ Obtener repositorio de administradores
+        admin_repo = AdministradorRepository(db_connection)
+        administrador = admin_repo.get_by_username(username)
+        
+        if administrador and admin_repo.verify_password(administrador['password_hash'], password):
             session['admin_logged_in'] = True
+            session['admin_id'] = administrador['id']
+            session['admin_nombre'] = administrador['nombre']
+            session['admin_rol'] = administrador['rol']
+            flash('Inicio de sesión exitoso', 'success')
             return redirect(url_for('admin_dashboard'))
         else:
             flash('Credenciales inválidas', 'error')

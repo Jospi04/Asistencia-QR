@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, time
 from .mysql_connection import MySQLConnection
 from src.domain.repositories import *
 from src.domain.entities import *
+import hashlib  # ✅ Para verificar contraseñas
 
 # ✅ Función de ayuda para convertir cualquier tipo de hora de MySQL a time
 def convertir_a_time(valor) -> Optional[time]:
@@ -33,7 +34,6 @@ def convertir_a_time(valor) -> Optional[time]:
         except:
             return None
     return None
-
 
 class EmpresaRepositoryMySQL(EmpresaRepository):
     def __init__(self, db_connection: MySQLConnection):
@@ -95,7 +95,6 @@ class EmpresaRepositoryMySQL(EmpresaRepository):
     def delete(self, id: int) -> bool:
         query = "DELETE FROM EMPRESAS WHERE id = %s"
         return self.db.execute_update(query, (id,))
-
 
 class EmpleadoRepositoryMySQL(EmpleadoRepository):
     def __init__(self, db_connection: MySQLConnection):
@@ -229,7 +228,6 @@ class EmpleadoRepositoryMySQL(EmpleadoRepository):
         except Exception as e:
             print(f"Error eliminando empleado {id}: {e}")
             return False
-
 
 class AsistenciaRepositoryMySQL(AsistenciaRepository):
     def __init__(self, db_connection: MySQLConnection):
@@ -405,7 +403,6 @@ class AsistenciaRepositoryMySQL(AsistenciaRepository):
             print(f"Error registrando alerta: {e}")
             return False
 
-
 class HorarioEstandarRepositoryMySQL(HorarioEstandarRepository):
     def __init__(self, db_connection: MySQLConnection):
         self.db = db_connection
@@ -454,7 +451,6 @@ class HorarioEstandarRepositoryMySQL(HorarioEstandarRepository):
         ))
         return horario
 
-
 class EscaneoTrackingRepositoryMySQL(EscaneoTrackingRepository):
     def __init__(self, db_connection: MySQLConnection):
         self.db = db_connection
@@ -480,3 +476,26 @@ class EscaneoTrackingRepositoryMySQL(EscaneoTrackingRepository):
     def registrar_escaneo(self, codigo_qr: str, ip_address: str = "") -> bool:
         """Registra un escaneo (método adicional útil)"""
         return self.create(codigo_qr, ip_address)
+
+# ✅ Nueva clase: AdministradorRepository
+class AdministradorRepository:
+    def __init__(self, db_connection: MySQLConnection):
+        self.db = db_connection
+    
+    def get_by_username(self, username: str) -> Optional[dict]:
+        """Obtiene un administrador por su nombre de usuario"""
+        query = """
+            SELECT id, empresa_id, nombre, usuario, password_hash, telefono, correo, rol, activo, created_at
+            FROM administradores
+            WHERE usuario = %s AND activo = TRUE
+        """
+        results = self.db.execute_query(query, (username,))
+        if not results:
+            return None
+        return results[0]
+    
+    def verify_password(self, stored_password_hash: str, provided_password: str) -> bool:
+        """Verifica si la contraseña proporcionada coincide con el hash almacenado"""
+        # Si usas hash simple (como en tu ejemplo), usa esto:
+        provided_hash = hashlib.sha256(provided_password.encode('utf-8')).hexdigest()
+        return provided_hash == stored_password_hash
