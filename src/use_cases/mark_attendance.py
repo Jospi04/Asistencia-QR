@@ -106,20 +106,42 @@ class MarkAttendanceUseCase:
         }
     
     def _procesar_registro_horario(self, asistencia: Asistencia, hora_actual: time) -> dict:
-        if not asistencia.entrada_manana_real:
+        """
+        Procesa el registro horario con lógica de turnos basada en la hora actual.
+        - Solo permite registros de mañana antes de las 12:00 PM.
+        - A partir de las 12:00 PM, solo permite registros de tarde.
+        """
+        # ⏰ Definir límites de turnos
+        hora_limite_mañana = time(12, 0)  # Hasta las 12:00 PM es "mañana"
+
+        # 🕐 Verificar si ya pasó el turno de mañana
+        ya_es_tarde = hora_actual >= hora_limite_mañana
+
+        # 🔁 Lógica mejorada por orden y hora
+        if not asistencia.entrada_manana_real and not ya_es_tarde:
+            # Solo permite entrada mañana si aún no ha pasado el límite
             asistencia.entrada_manana_real = hora_actual
-            return {"actualizado": True, "mensaje": f"Entrada mañana registrada: {hora_actual}"}
-        elif not asistencia.salida_manana_real:
+            return {"actualizado": True, "mensaje": f"✅ Entrada mañana registrada: {hora_actual.strftime('%H:%M')}"}
+
+        elif not asistencia.salida_manana_real and asistencia.entrada_manana_real and not ya_es_tarde:
+            # Permite salida mañana solo si hay entrada y aún no es tarde
             asistencia.salida_manana_real = hora_actual
-            return {"actualizado": True, "mensaje": f"Salida mañana registrada: {hora_actual}"}
+            return {"actualizado": True, "mensaje": f"✅ Salida mañana registrada: {hora_actual.strftime('%H:%M')}"}
+
         elif not asistencia.entrada_tarde_real:
+            # A partir de las 12:00, fuerza el registro en la tarde
             asistencia.entrada_tarde_real = hora_actual
-            return {"actualizado": True, "mensaje": f"Entrada tarde registrada: {hora_actual}"}
+            return {"actualizado": True, "mensaje": f"✅ Entrada tarde registrada: {hora_actual.strftime('%H:%M')}"}
+
         elif not asistencia.salida_tarde_real:
             asistencia.salida_tarde_real = hora_actual
-            return {"actualizado": True, "mensaje": f"Salida tarde registrada: {hora_actual}"}
+            return {"actualizado": True, "mensaje": f"✅ Salida tarde registrada: {hora_actual.strftime('%H:%M')}"}
+
         else:
-            return {"actualizado": False, "mensaje": "Todos los registros del día completos"}
+            return {
+                "actualizado": False, 
+                "mensaje": "❌ Todos los registros del día ya están completos"
+            }
     
     def _calcular_horas_trabajadas(self, asistencia: Asistencia):
         # ✅ Determinar si asistió a cada turno (marcó entrada Y salida)
