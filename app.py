@@ -30,7 +30,7 @@ from src.use_cases.get_report import GetReportUseCase, minutos_a_hhmm
 from src.infrastructure.qr_generator import QRGenerator
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'tu_clave_secreta_aqui')
+app.secret_key = os.getenv('SECRET_KEY', '')
 
 # Configuración de base de datos
 db_connection = MySQLConnection()

@@ -231,7 +231,7 @@ class MarkAttendanceUseCase:
             total_segundos = diferencia.total_seconds()
 
             # ✅ Redondear hacia arriba: 1 segundo = 1 minuto
-            minutos_redondeados = math.ceil(total_segundos / 60)
+            minutos_redondeados = int(total_segundos / 60)
 
             return max(0, int(minutos_redondeados))
         except Exception as e:
