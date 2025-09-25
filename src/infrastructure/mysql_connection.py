@@ -6,11 +6,11 @@ from typing import Optional
 class MySQLConnection:
     def __init__(self):
         # Configuración específica para MySQL Workbench local
-        self.host = os.getenv('DB_HOST', 'joseph.cjows6c2y07g.us-east-2.rds.amazonaws.com')  # Usar 127.0.0.1 en lugar de localhost
+        self.host = os.getenv('DB_HOST', 'localhost')  # Usar 127.0.0.1 en lugar de localhost
         self.port = os.getenv('DB_PORT', '3306')       # Puerto por defecto de MySQL
         self.database = os.getenv('DB_NAME', 'sistema_asistencia_qr')
-        self.user = os.getenv('DB_USER', 'admin')       # Usuario por defecto de Workbench
-        self.password = os.getenv('DB_PASSWORD', 'Vikyvaleria.24')   # Coloca aquí tu contraseña de MySQL
+        self.user = os.getenv('DB_USER', 'root')       # Usuario por defecto de Workbench
+        self.password = os.getenv('DB_PASSWORD', 'joseph')   # Coloca aquí tu contraseña de MySQL
         self.connection = None
     
     def connect(self) -> Optional[mysql.connector.MySQLConnection]:
