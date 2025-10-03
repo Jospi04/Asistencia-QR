@@ -76,7 +76,7 @@ class MarkAttendanceUseCase:
             else:
                 self.asistencia_repository.create(asistencia)
         
-        # ❌ Comentado: No enviar alertas automáticas inmediatas
+        #  Comentado: No enviar alertas automáticas inmediatas
         # self.verificar_y_enviar_alertas(empleado.id)
         
         return {
@@ -111,31 +111,31 @@ class MarkAttendanceUseCase:
         - Solo permite registros de mañana antes de las 12:00 PM.
         - A partir de las 12:00 PM, solo permite registros de tarde.
         """
-        # ⏰ Definir límites de turnos
+        #  Definir límites de turnos
         hora_limite_mañana = time(12, 0)  # Hasta las 12:00 PM es "mañana"
 
-        # 🕐 Verificar si ya pasó el turno de mañana
+        #  Verificar si ya pasó el turno de mañana
         ya_es_tarde = hora_actual >= hora_limite_mañana
 
-        # 🔁 Lógica mejorada por orden y hora
+        #  Lógica mejorada por orden y hora
         if not asistencia.entrada_manana_real and not ya_es_tarde:
             # Solo permite entrada mañana si aún no ha pasado el límite
             asistencia.entrada_manana_real = hora_actual
-            return {"actualizado": True, "mensaje": f"✅ Entrada mañana registrada: {hora_actual.strftime('%H:%M')}"}
+            return {"actualizado": True, "mensaje": f" Entrada mañana registrada: {hora_actual.strftime('%H:%M')}"}
 
         elif not asistencia.salida_manana_real and asistencia.entrada_manana_real and not ya_es_tarde:
             # Permite salida mañana solo si hay entrada y aún no es tarde
             asistencia.salida_manana_real = hora_actual
-            return {"actualizado": True, "mensaje": f"✅ Salida mañana registrada: {hora_actual.strftime('%H:%M')}"}
+            return {"actualizado": True, "mensaje": f" Salida mañana registrada: {hora_actual.strftime('%H:%M')}"}
 
         elif not asistencia.entrada_tarde_real:
             # A partir de las 12:00, fuerza el registro en la tarde
             asistencia.entrada_tarde_real = hora_actual
-            return {"actualizado": True, "mensaje": f"✅ Entrada tarde registrada: {hora_actual.strftime('%H:%M')}"}
+            return {"actualizado": True, "mensaje": f" Entrada tarde registrada: {hora_actual.strftime('%H:%M')}"}
 
         elif not asistencia.salida_tarde_real:
             asistencia.salida_tarde_real = hora_actual
-            return {"actualizado": True, "mensaje": f"✅ Salida tarde registrada: {hora_actual.strftime('%H:%M')}"}
+            return {"actualizado": True, "mensaje": f" Salida tarde registrada: {hora_actual.strftime('%H:%M')}"}
 
         else:
             return {
@@ -144,7 +144,7 @@ class MarkAttendanceUseCase:
             }
     
     def _calcular_horas_trabajadas(self, asistencia: Asistencia):
-        # ✅ Determinar si asistió a cada turno (marcó entrada Y salida)
+        #  Determinar si asistió a cada turno (marcó entrada Y salida)
         asistencia.asistio_manana = (
             bool(asistencia.entrada_manana_real) and 
             bool(asistencia.salida_manana_real)
@@ -154,7 +154,7 @@ class MarkAttendanceUseCase:
             bool(asistencia.salida_tarde_real)
         )
 
-        # ✅ Calcular horas solo si ambos registros están
+        #  Calcular horas solo si ambos registros están
         total_minutos = 0
         if asistencia.entrada_manana_real and asistencia.salida_manana_real:
             minutos_manana = self._calcular_minutos_entre_horas(
@@ -167,11 +167,11 @@ class MarkAttendanceUseCase:
             )
             total_minutos += minutos_tarde
 
-        # ✅ Convertir a horas (solo para mostrar)
+        #  Convertir a horas (solo para mostrar)
         total_horas = total_minutos / 60.0
         asistencia.total_horas_trabajadas = round(total_horas, 2)
 
-        # ✅ Horas normales y extras — CALCULA CON MINUTOS, NO CON HORAS REDONDEADAS
+        #  Horas normales y extras — CALCULA CON MINUTOS, NO CON HORAS REDONDEADAS
         minutos_normales = 8 * 60  # 480 minutos
         if total_minutos > minutos_normales:
             minutos_extras = total_minutos - minutos_normales
@@ -181,7 +181,7 @@ class MarkAttendanceUseCase:
             asistencia.horas_normales = round(total_horas, 2)
             asistencia.horas_extras = 0.0
 
-        # ✅ Estado del día
+        #  Estado del día
         if asistencia.asistio_manana and asistencia.asistio_tarde:
             asistencia.estado_dia = "COMPLETO"
         elif asistencia.asistio_manana or asistencia.asistio_tarde:
@@ -223,14 +223,14 @@ class MarkAttendanceUseCase:
                 print("⚠️ Aviso: hora_inicio o hora_fin llegaron como timedelta, se ignora este cálculo.")
                 return 0
 
-            # ✅ Convertir a datetime con fecha actual
+            #  Convertir a datetime con fecha actual
             inicio_dt = datetime.combine(hoy, hora_inicio)
             fin_dt = datetime.combine(hoy, hora_fin)
 
             diferencia = fin_dt - inicio_dt
             total_segundos = diferencia.total_seconds()
 
-            # ✅ Redondear hacia arriba: 1 segundo = 1 minuto
+            #  Redondear hacia arriba: 1 segundo = 1 minuto
             minutos_redondeados = int(total_segundos / 60)
 
             return max(0, int(minutos_redondeados))

@@ -325,8 +325,12 @@ def api_scan_qr():
 # Rutas de reportes
 @app.route('/reports')
 def reports():
-    empresas = list_companies_use_case.execute()
-    return render_template('report.html', empresas=empresas)
+     if not session.get('admin_logged_in'):
+        flash('Debes iniciar sesión para acceder a los reportes', 'error')
+        return redirect(url_for('admin_login'))
+     
+     empresas = list_companies_use_case.execute()
+     return render_template('report.html', empresas=empresas)
 
 @app.route('/api/reports/monthly')
 def api_monthly_report():
