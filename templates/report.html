@@ -1,72 +1,275 @@
 {% extends "base.html" %}
 
-{% block title %}Reportes - Sistema de Asistencia QR{% endblock %}
+{% block title %}Sistema QR{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
+<style>
+/* Sistema de tabs moderno */
+.nav-tabs-custom {
+    border: none;
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 0.5rem;
+}
+
+.nav-tabs-custom .nav-link {
+    border: none;
+    color: #6c757d;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.3s;
+    font-weight: 500;
+}
+
+.nav-tabs-custom .nav-link:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+
+.nav-tabs-custom .nav-link.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Mini estadísticas */
+.mini-stat {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    border-left: 4px solid;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    transition: transform 0.3s;
+}
+
+.mini-stat:hover {
+    transform: translateY(-3px);
+}
+
+.mini-stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+/* Calendario visual */
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-top: 1rem;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+    position: relative;
+}
+
+.calendar-day:hover {
+    transform: scale(1.05);
+}
+
+.calendar-day-number {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.calendar-day-status {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    position: absolute;
+    bottom: 8px;
+}
+
+/* Timeline de empleado */
+.employee-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1.5rem;
+    border-left: 2px solid #e9ecef;
+    padding-left: 1.5rem;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -7px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid;
+}
+
+/* Filtros avanzados */
+.filter-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    background: white;
+    border: 2px solid #e9ecef;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.filter-badge:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.filter-badge.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+/* Alertas predictivas */
+.alert-predicción {
+    border-left: 4px solid #ffc107;
+    background: #fff3cd;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+/* Gráficos */
+.chart-container {
+    position: relative;
+    height: 300px;
+    padding: 1rem;
+}
+
+/* Employee cards */
+.employee-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.employee-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.employee-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 1.25rem;
+}
+
+/* Progress bars */
+.progress-circle {
+    width: 60px;
+    height: 60px;
+}
+
+@media (max-width: 768px) {
+    .calendar-grid {
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+    }
+    
+    .calendar-day {
+        font-size: 0.75rem;
+    }
+}
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Header con filtros rápidos -->
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="header-gradient py-4 mb-4 rounded">
-                <div class="container">
-                    <h1 class="mb-0"><i class="fas fa-chart-bar me-3"></i>Reportes de Asistencia</h1>
-                    <p class="mb-0">Generación y visualización de reportes mensuales por empresa</p>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-analytics me-2"></i>Análisis de Asistencia</h2>
+                    <p class="text-muted mb-0">Panel de control</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="exportarExcel()">
+                        <i class="fas fa-file-excel me-1"></i>Excel
+                    </button>
+                    <button class="btn btn-outline-danger" onclick="exportarPDF()">
+                        <i class="fas fa-file-pdf me-1"></i>PDF
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- Filtros principales -->
     <div class="row mb-4">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Parámetros de Reporte</h5>
-                </div>
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <form id="report-form">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="empresa_id" class="form-label">Empresa *</label>
-                                <select class="form-select" id="empresa_id" name="empresa_id" required>
-                                    <option value="">Seleccione una empresa</option>
-                                    {% for empresa in empresas %}
-                                    <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-3">
-                                <label for="mes" class="form-label">Mes *</label>
-                                <select class="form-select" id="mes" name="mes" required>
-                                    <option value="">Seleccione mes</option>
-                                    <option value="1">Enero</option>
-                                    <option value="2">Febrero</option>
-                                    <option value="3">Marzo</option>
-                                    <option value="4">Abril</option>
-                                    <option value="5">Mayo</option>
-                                    <option value="6">Junio</option>
-                                    <option value="7">Julio</option>
-                                    <option value="8">Agosto</option>
-                                    <option value="9">Septiembre</option>
-                                    <option value="10">Octubre</option>
-                                    <option value="11">Noviembre</option>
-                                    <option value="12">Diciembre</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-3">
-                                <label for="anio" class="form-label">Año *</label>
-                                <select class="form-select" id="anio" name="anio" required>
-                                    <option value="">Seleccione año</option>
-                                    <option value="2024">2024</option>
-                                    <option value="2025">2025</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="fas fa-search me-2"></i>Generar
-                                </button>
-                            </div>
+                    <form id="report-form" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-building text-primary me-1"></i>Empresa
+                            </label>
+                            <select class="form-select" id="empresa_id" required>
+                                <option value="">Seleccione</option>
+                                {% for empresa in empresas %}
+                                <option value="{{ empresa.id }}">{{ empresa.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Mes</label>
+                            <select class="form-select" id="mes" required>
+                                <option value="">Mes</option>
+                                {% for i in range(1, 13) %}
+                                <option value="{{ i }}">{{ ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'][i] }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold">Año</label>
+                            <select class="form-select" id="anio" required>
+                                <option value="">Año</option>
+                                <option value="2024">2024</option>
+                                <option value="2025">2025</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">Vista</label>
+                            <select class="form-select" id="vista_tipo">
+                                <option value="resumen">Resumen General</option>
+                                <option value="calendario">Vista Calendario</option>
+                                <option value="empleados">Por Empleado</option>
+                                <option value="graficos">Gráficos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>Analizar
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -74,214 +277,408 @@
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div id="report-container">
-                <div class="text-center py-5">
-                    <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
-                    <h4>Seleccione los parámetros para generar el reporte</h4>
-                    <p class="text-muted">Elija una empresa, mes y año para ver los reportes de asistencia</p>
-                </div>
-            </div>
+    <!-- Contenedor del reporte -->
+    <div id="report-container">
+        <div class="text-center py-5">
+            <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+            <h4 class="text-secondary">Inicia el análisis</h4>
+            <p class="text-muted">Selecciona los parámetros para ver insights detallados</p>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-// Variables para almacenar los parámetros actuales del reporte
-let currentReportParams = {
-    empresa_id: null,
-    mes: null,
-    anio: null
-};
+let currentReport = null;
+let currentParams = {};
 
 document.getElementById('report-form').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const empresaId = document.getElementById('empresa_id').value;
-    const mes = document.getElementById('mes').value;
-    const anio = document.getElementById('anio').value;
+    const params = {
+        empresa_id: document.getElementById('empresa_id').value,
+        mes: parseInt(document.getElementById('mes').value),
+        anio: parseInt(document.getElementById('anio').value),
+        vista: document.getElementById('vista_tipo').value
+    };
     
-    if (!empresaId || !mes || !anio) {
-        alert('Por favor complete todos los campos');
+    if (!params.empresa_id || !params.mes || !params.anio) {
+        alert('Complete todos los campos');
         return;
     }
     
-    // Guardar parámetros actuales
-    currentReportParams = {
-        empresa_id: empresaId,
-        mes: mes,
-        anio: anio
-    };
-    
-    // Mostrar indicador de carga
-    const reportContainer = document.getElementById('report-container');
-    reportContainer.innerHTML = `
+    currentParams = params;
+    cargarReporte(params);
+});
+
+function cargarReporte(params) {
+    const container = document.getElementById('report-container');
+    container.innerHTML = `
         <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="mt-2">Generando reporte...</p>
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div>
+            <p class="text-muted">Analizando datos...</p>
         </div>
     `;
     
-    // Obtener reporte
-    fetch(`/api/reports/monthly?empresa_id=${empresaId}&mes=${mes}&anio=${anio}`)
-        .then(response => response.json())
+    fetch(`/api/reports/monthly?empresa_id=${params.empresa_id}&mes=${params.mes}&anio=${params.anio}`)
+        .then(res => res.json())
         .then(data => {
-            mostrarReporte(data);
+            currentReport = data;
+            renderizarVista(params.vista, data);
         })
-        .catch(error => {
-            console.error('Error:', error);
-            reportContainer.innerHTML = `
+        .catch(err => {
+            container.innerHTML = `
                 <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Error al generar el reporte. Por favor intente nuevamente.
+                    <i class="fas fa-exclamation-triangle me-2"></i>Error: ${err.message}
                 </div>
             `;
         });
-});
+}
 
-function mostrarReporte(data) {
-    const reportContainer = document.getElementById('report-container');
+function renderizarVista(tipo, data) {
+    const container = document.getElementById('report-container');
     
-    if (data.error) {
-        reportContainer.innerHTML = `
-            <div class="alert alert-danger">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                ${data.error}
-            </div>
-        `;
-        return;
+    switch(tipo) {
+        case 'resumen':
+            container.innerHTML = generarVistaResumen(data);
+            break;
+        case 'calendario':
+            container.innerHTML = generarVistaCalendario(data);
+            break;
+        case 'empleados':
+            container.innerHTML = generarVistaEmpleados(data);
+            break;
+        case 'graficos':
+            container.innerHTML = generarVistaGraficos(data);
+            setTimeout(() => inicializarGraficos(data), 100);
+            break;
+    }
+}
+
+function generarVistaResumen(data) {
+    const meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    // Detectar alertas
+    const alertas = [];
+    if (data.totales && data.totales.total_faltas > 5) {
+        alertas.push({
+            tipo: 'danger',
+            icono: 'exclamation-triangle',
+            mensaje: `Nivel alto de faltas: ${data.totales.total_faltas} en el mes`
+        });
     }
     
-    // Crear contenido del reporte
-    let empleadosHTML = '';
-    if (data.empleados && data.empleados.length > 0) {
-        empleadosHTML = `
-            <table class="table table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>Nombre</th>
-                        <th>DNI</th>
-                        <th>Asistencias</th>
-                        <th>Faltas</th>
-                        <th>Horas Normales</th>
-                        <th>Horas Extras</th>
-                        <th>% Asistencia</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.empleados.map(empleado => `
-                        <tr>
-                            <td>${empleado.nombre || ''}</td>
-                            <td>${empleado.dni || ''}</td>
-                            <td>${empleado.asistencias || 0}</td>
-                            <td>${empleado.faltas || 0}</td>
-                            <td>${empleado.horas_normales || 0}</td>
-                            <td>${empleado.horas_extras || 0}</td>
-                            <td>${empleado.porcentaje_asistencia || 0}%</td>
-                        </tr>
+    const empleadosConProblemas = data.empleados ? data.empleados.filter(e => e.porcentaje_asistencia < 80).length : 0;
+    if (empleadosConProblemas > 0) {
+        alertas.push({
+            tipo: 'warning',
+            icono: 'user-times',
+            mensaje: `${empleadosConProblemas} empleado(s) con asistencia menor al 80%`
+        });
+    }
+    
+    return `
+        <div class="row g-3 mb-4">
+            <!-- Mini estadísticas -->
+            <div class="col-md-3">
+                <div class="mini-stat" style="border-color: #667eea;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Empleados Activos</div>
+                            <h3 class="mb-0">${data.totales ? data.totales.total_empleados : 0}</h3>
+                        </div>
+                        <div class="mini-stat-icon" style="background: rgba(102, 126, 234, 0.1); color: #667eea;">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="mini-stat" style="border-color: #10b981;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Horas Normales</div>
+                            <h3 class="mb-0">${data.totales ? data.totales.total_horas_normales : '0:00'}</h3>
+                        </div>
+                        <div class="mini-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="mini-stat" style="border-color: #f59e0b;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Horas Extras</div>
+                            <h3 class="mb-0">${data.totales ? data.totales.total_horas_extras : '0:00'}</h3>
+                        </div>
+                        <div class="mini-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                            <i class="fas fa-hourglass-half"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3">
+                <div class="mini-stat" style="border-color: #ef4444;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-muted small">Total Faltas</div>
+                            <h3 class="mb-0">${data.totales ? data.totales.total_faltas : 0}</h3>
+                        </div>
+                        <div class="mini-stat-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        ${alertas.length > 0 ? `
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h5 class="mb-3"><i class="fas fa-bell me-2"></i>Alertas del Período</h5>
+                    ${alertas.map(a => `
+                        <div class="alert alert-${a.tipo} d-flex align-items-center mb-2">
+                            <i class="fas fa-${a.icono} me-2"></i>
+                            <span>${a.mensaje}</span>
+                        </div>
                     `).join('')}
-                </tbody>
-            </table>
-        `;
-    } else {
-        empleadosHTML = '<p class="text-center">No hay datos de empleados disponibles</p>';
-    }
-    
-    reportContainer.innerHTML = `
-        <div class="card">
-            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-file-alt me-2"></i>
-                    Reporte Mensual - ${data.empresa ? data.empresa.nombre : 'Empresa'}
-                </h5>
-                <div>
-                    <button class="btn btn-light btn-sm me-2" onclick="exportarExcel()">
-                        <i class="fas fa-file-excel me-1"></i>Exportar Excel
-                    </button>
-                    <button class="btn btn-light btn-sm" onclick="exportarPDF()">
-                        <i class="fas fa-file-pdf me-1"></i>Exportar PDF
-                    </button>
                 </div>
             </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-building me-2"></i>Empresa</h6>
-                        <p class="mb-0">${data.empresa ? data.empresa.nombre : 'No especificada'}</p>
+        ` : ''}
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2 text-primary"></i>
+                            Detalle por Empleado - ${data.empresa ? data.empresa.nombre : ''}
+                        </h5>
+                        <small class="text-muted">${meses[data.periodo?.mes] || ''} ${data.periodo?.anio || ''}</small>
                     </div>
-                    <div class="col-md-6">
-                        <h6><i class="fas fa-calendar me-2"></i>Período</h6>
-                        <p class="mb-0">Mes: ${data.periodo ? data.periodo.mes : ''} ${data.periodo ? data.periodo.anio : ''}</p>
-                        <p class="mb-0">Del: ${data.periodo ? data.periodo.primer_dia : ''} al ${data.periodo ? data.periodo.ultimo_dia : ''}</p>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead style="background: #f8f9fa;">
+                                    <tr>
+                                        <th class="px-4 py-3">Empleado</th>
+                                        <th class="text-center py-3">DNI</th>
+                                        <th class="text-center py-3">Asistencias</th>
+                                        <th class="text-center py-3">Faltas</th>
+                                        <th class="text-center py-3">H. Normales</th>
+                                        <th class="text-center py-3">H. Extras</th>
+                                        <th class="text-center py-3">% Asistencia</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${(data.empleados || []).map(emp => {
+                                        const porc = emp.porcentaje_asistencia || 0;
+                                        let badgeClass = 'success';
+                                        if (porc < 80) badgeClass = 'danger';
+                                        else if (porc < 95) badgeClass = 'warning';
+                                        
+                                        return `
+                                        <tr>
+                                            <td class="px-4 py-3">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="employee-avatar me-3">
+                                                        ${emp.nombre.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <strong>${emp.nombre}</strong>
+                                                </div>
+                                            </td>
+                                            <td class="text-center text-muted py-3">${emp.dni || '-'}</td>
+                                            <td class="text-center py-3">${emp.asistencias || 0}</td>
+                                            <td class="text-center py-3">
+                                                ${emp.faltas > 0 ? `<span class="badge bg-danger">${emp.faltas}</span>` : emp.faltas}
+                                            </td>
+                                            <td class="text-center py-3">
+                                                <span class="badge bg-success bg-opacity-10 text-success">${emp.horas_normales || '0:00'}</span>
+                                            </td>
+                                            <td class="text-center py-3">
+                                                <span class="badge bg-warning bg-opacity-10 text-warning">${emp.horas_extras || '0:00'}</span>
+                                            </td>
+                                            <td class="text-center py-3">
+                                                <span class="badge bg-${badgeClass}">${porc}%</span>
+                                            </td>
+                                        </tr>
+                                    `}).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="card bg-primary text-white text-center">
-                            <div class="card-body">
-                                <h3 class="card-title mb-0">${data.totales ? data.totales.total_empleados : 0}</h3>
-                                <p class="card-text mb-0">Empleados</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-success text-white text-center">
-                            <div class="card-body">
-                                <h3 class="card-title mb-0">${data.totales ? data.totales.total_horas_normales : 0}</h3>
-                                <p class="card-text mb-0">Horas Normales</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-warning text-dark text-center">
-                            <div class="card-body">
-                                <h3 class="card-title mb-0">${data.totales ? data.totales.total_horas_extras : 0}</h3>
-                                <p class="card-text mb-0">Horas Extras</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-danger text-white text-center">
-                            <div class="card-body">
-                                <h3 class="card-title mb-0">${data.totales ? data.totales.total_faltas : 0}</h3>
-                                <p class="card-text mb-0">Faltas</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <h6><i class="fas fa-users me-2"></i>Detalle por Empleado</h6>
-                ${empleadosHTML}
-            </div>
-            <div class="card-footer text-muted">
-                <small>Generado el: ${new Date().toLocaleString('es-ES')}</small>
             </div>
         </div>
     `;
 }
 
-function exportarExcel() {
-    // Verificar que haya parámetros de reporte guardados
-    if (!currentReportParams.empresa_id || !currentReportParams.mes || !currentReportParams.anio) {
-        alert('Por favor genere un reporte primero antes de exportar');
-        return;
+function generarVistaCalendario(data) {
+    // Vista de calendario mensual con estados de asistencia
+    const dias = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+    return `
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <h5 class="mb-4"><i class="fas fa-calendar-alt me-2"></i>Calendario de Asistencia</h5>
+                <div class="text-center">
+                    <p class="text-muted">Funcionalidad de calendario en desarrollo...</p>
+                    <small>Próximamente: visualización día por día</small>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generarVistaEmpleados(data) {
+    return `
+        <div class="row g-3">
+            ${(data.empleados || []).map(emp => `
+                <div class="col-md-6">
+                    <div class="employee-card">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="employee-avatar me-3">
+                                    ${emp.nombre.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h6 class="mb-0">${emp.nombre}</h6>
+                                    <small class="text-muted">DNI: ${emp.dni || '-'}</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-${emp.porcentaje_asistencia >= 95 ? 'success' : emp.porcentaje_asistencia >= 80 ? 'warning' : 'danger'}">
+                                ${emp.porcentaje_asistencia || 0}%
+                            </span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="text-muted small">Asistencias</div>
+                                <div class="fw-bold">${emp.asistencias || 0}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">Faltas</div>
+                                <div class="fw-bold text-danger">${emp.faltas || 0}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">H. Normales</div>
+                                <div class="fw-bold text-success">${emp.horas_normales || '0:00'}</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-muted small">H. Extras</div>
+                                <div class="fw-bold text-warning">${emp.horas_extras || '0:00'}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function generarVistaGraficos(data) {
+    return `
+        <div class="row g-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="mb-3">Distribución de Asistencia</h6>
+                        <div class="chart-container">
+                            <canvas id="chartAsistencia"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="mb-3">Horas por Empleado</h6>
+                        <div class="chart-container">
+                            <canvas id="chartHoras"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function inicializarGraficos(data) {
+    // Gráfico de asistencia
+    const ctxAsist = document.getElementById('chartAsistencia');
+    if (ctxAsist) {
+        new Chart(ctxAsist, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completos', 'Incompletos', 'Faltas'],
+                datasets: [{
+                    data: [
+                        (data.empleados || []).filter(e => e.porcentaje_asistencia === 100).length,
+                        (data.empleados || []).filter(e => e.porcentaje_asistencia > 0 && e.porcentaje_asistencia < 100).length,
+                        data.totales?.total_faltas || 0
+                    ],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
     }
     
-    // Construir URL de exportación
-    const url = `/api/reports/export/excel?empresa_id=${currentReportParams.empresa_id}&mes=${currentReportParams.mes}&anio=${currentReportParams.anio}`;
-    
-    // Abrir en nueva pestaña para descargar
-    window.open(url, '_blank');
+    // Gráfico de horas
+    const ctxHoras = document.getElementById('chartHoras');
+    if (ctxHoras && data.empleados) {
+        new Chart(ctxHoras, {
+            type: 'bar',
+            data: {
+                labels: data.empleados.map(e => e.nombre.split(' ')[0]),
+                datasets: [
+                    {
+                        label: 'Normales',
+                        data: data.empleados.map(e => {
+                            const [h, m] = (e.horas_normales || '0:00').split(':');
+                            return parseInt(h) + parseInt(m) / 60;
+                        }),
+                        backgroundColor: '#10b981'
+                    },
+                    {
+                        label: 'Extras',
+                        data: data.empleados.map(e => {
+                            const [h, m] = (e.horas_extras || '0:00').split(':');
+                            return parseInt(h) + parseInt(m) / 60;
+                        }),
+                        backgroundColor: '#f59e0b'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+}
+
+function exportarExcel() {
+    if (!currentParams.empresa_id) {
+        alert('Genera un reporte primero');
+        return;
+    }
+    window.open(`/api/reports/export/excel?empresa_id=${currentParams.empresa_id}&mes=${currentParams.mes}&anio=${currentParams.anio}`, '_blank');
 }
 
 function exportarPDF() {
-    alert('Funcionalidad de exportación a PDF en desarrollo');
+    alert('Exportación a PDF en desarrollo');
 }
 </script>
 {% endblock %}

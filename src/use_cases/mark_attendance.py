@@ -77,7 +77,7 @@ class MarkAttendanceUseCase:
                 self.asistencia_repository.create(asistencia)
         
         #  Comentado: No enviar alertas automáticas inmediatas
-        # self.verificar_y_enviar_alertas(empleado.id)
+            self.verificar_y_enviar_alertas(empleado.id)
         
         return {
             "status": "success",

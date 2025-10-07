@@ -21,10 +21,10 @@ class ListCompaniesUseCase:
         # si se tiene acceso al repositorio de empleados
         return [
             {
-                "id": empresa.id,
+                  "id": empresa.id,
                 "nombre": empresa.nombre,
                 "codigo_empresa": empresa.codigo_empresa,
-                "empleado_count": 0  # Placeholder, se calcularía realmente
+                "empleado_count": 1  # Placeholder, se calcularía realmente
             }
             for empresa in empresas
         ]
