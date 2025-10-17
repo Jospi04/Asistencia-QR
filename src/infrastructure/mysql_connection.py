@@ -29,7 +29,7 @@ class MySQLConnection:
                 auth_plugin='mysql_native_password'  # Plugin de autenticación común
             )
             if self.connection.is_connected():
-                print(f"Conexión exitosa a MySQL Workbench - Base de datos: {self.database}")
+                # print(f"Conexión exitosa a MySQL Workbench - Base de datos: {self.database}-Mucho molesta encender de ser necesario")
                 return self.connection
         except Error as e:
             print(f"Error al conectar a MySQL Workbench: {e}")
