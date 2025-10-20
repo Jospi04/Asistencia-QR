@@ -40,11 +40,6 @@ class GetReportUseCase:
         ultimo_dia = f"{anio}-{mes:02d}-{calendar.monthrange(anio, mes)[1]}"
         
         reporte_empleados = []
-        
-        # Calcular totales en MINUTOS para evitar errores de redondeo
-        total_minutos_normales = 0
-        total_minutos_extras = 0
-        
         totales = {
             "total_empleados": len(empleados),
             "dias_laborables": 0,

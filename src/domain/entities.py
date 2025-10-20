@@ -100,4 +100,3 @@ class EscaneoTracking:
         self.codigo_qr = codigo_qr
         self.ip_address = ip_address
         self.timestamp_escaneo: Optional[datetime] = None            # VACACIONES, PERMISO, DESCANSO
-

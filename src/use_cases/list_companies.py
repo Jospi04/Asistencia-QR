@@ -17,17 +17,25 @@ class ListCompaniesUseCase:
         Obtiene la lista de empresas con el conteo de empleados
         """
         empresas = self.empresa_repository.get_all()
-        # Aquí se podría extender para incluir conteo de empleados
-        # si se tiene acceso al repositorio de empleados
-        return [
-            {
-                  "id": empresa.id,
+        
+        resultado = []
+        for empresa in empresas:
+            # Contar empleados reales si hay repositorio disponible
+            empleado_count = 0
+            if self.empleado_repository:
+                empleados = self.empleado_repository.get_by_empresa_id(empresa.id)
+                empleado_count = len(empleados) if empleados else 0
+            
+            resultado.append({
+                "id": empresa.id,
                 "nombre": empresa.nombre,
                 "codigo_empresa": empresa.codigo_empresa,
-                "empleado_count": 1  # Placeholder, se calcularía realmente
-            }
-            for empresa in empresas
-        ]
+                "empleado_count": empleado_count
+            })
+        
+        return resultado
+
+
 
 class ListCompaniesRequest:
     def __init__(self):

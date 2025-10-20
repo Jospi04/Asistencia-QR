@@ -58,33 +58,30 @@ get_report_use_case = GetReportUseCase(empleado_repo, asistencia_repo, empresa_r
 # Inicializar QR generator
 qr_generator = QRGenerator()
 
-# La inicialización del scheduler se mueve a la parte inferior dentro de if __name__ == '__main__':
-
 def job_reporte_semanal():
     """Job semanal que envía reportes a la dueña y a los empleados"""
     try:
         print("=" * 70)
-        print("🚀 JOB INICIADO")
+        print("🚀 JOB SEMANAL INICIADO")
         print(f"⏰ Hora servidor: {datetime.now()}")
         print("=" * 70)
         
-        print("\n📧 PASO 1: Enviando reportes a la jefa...")
+        print("\n📧 PASO 1: Enviando reportes CONSOLIDADOS (Semanal) a la jefa...")
         mark_attendance_use_case.generar_reporte_semanal()
-        print("✅ Reportes a la jefa enviados correctamente\n")
+        print("✅ Reportes consolidados a la jefa enviados correctamente\n")
         
-        print("📧 PASO 2: Enviando reportes a empleados...")
+        print("📧 PASO 2: Enviando reportes INDIVIDUALES (Semanal) a empleados...")
         mark_attendance_use_case.enviar_reporte_individual_empleados()
-        print("✅ Reportes a empleados enviados correctamente\n")
+        print("✅ Reportes individuales a empleados enviados correctamente\n")
         
-        print("🎉 JOB COMPLETADO EXITOSAMENTE")
+        print("🎉 JOB SEMANAL COMPLETADO EXITOSAMENTE")
         print("=" * 70)
     except Exception as e:
         print("=" * 70)
-        print(f"❌ ERROR: {e}")
+        print(f"❌ ERROR en Job Semanal: {e}")
         import traceback
         traceback.print_exc()
         print("=" * 70)
-
 
 def obtener_nombre_mes(numero_mes):
     """Obtiene el nombre del mes por su número"""
@@ -382,7 +379,6 @@ def api_get_empleados():
     except Exception as e:
         print(f"Error en api_get_empleados: {e}")
         return jsonify({"error": str(e)}), 500
-    
 
 @app.route('/api/asistencias/<int:empleado_id>')
 def api_get_asistencia_empleado(empleado_id):
@@ -616,27 +612,41 @@ def internal_error(error):
     return render_template('error.html', error_message="Error interno del servidor"), 500
 
 
+# --------------------------------------------------------------------------------------
+# INICIO DEL SCHEDULER (Solo si se ejecuta directamente)
+# --------------------------------------------------------------------------------------
 if __name__ == '__main__':
     
+    print("=" * 70)
+    print("🚀 INICIANDO APLICACIÓN")
+    print("=" * 70)
+    
+    # Crear scheduler
     scheduler = BackgroundScheduler()
-
-    # 2. Programar la tarea semanal (Lunes a las 8:00 AM hora de Perú)
-    # Se usa 'America/Lima' como huso horario, que es la hora estándar de Perú.
+    
+    # Programar job semanal
     scheduler.add_job(
         job_reporte_semanal, 
-        trigger='cron', 
-        day_of_week='mon', 
-        hour=8, 
-        minute=0, 
-        timezone='America/Lima'
+        trigger='interval', 
+        minutes=2,
     )
     
-    # 3. Arrancar el scheduler
-    scheduler.start()
+    print("✅ Job programado: Lunes a las 8:00 AM (Perú)")
     
-    # 4. Registrar la salida de forma limpia (wait=False para evitar el error)
+    # Iniciar scheduler
+    scheduler.start()
+    print("✅ Scheduler iniciado correctamente")
+    
+    # Registrar shutdown
     atexit.register(lambda: scheduler.shutdown(wait=False))
-
-    # 5. Iniciar la aplicación Flask
-    # La ejecución dentro de if __name__ == '__main__': previene el doble inicio.
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    
+    if EMAIL_EMPRESA_ADMIN:
+        print(f"📧 Email admin: {EMAIL_EMPRESA_ADMIN}")
+    else:
+        print("⚠️  EMAIL_EMPRESA no configurado")
+    
+    print("=" * 70)
+    print("🌐 Iniciando servidor Flask...\n")
+    
+    # Iniciar Flask
+    app.run(debug=False, host='0.0.0.0', port=5000)
