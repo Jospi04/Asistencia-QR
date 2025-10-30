@@ -284,7 +284,7 @@ def api_scan_qr():
 @app.route('/reports')
 def reports():
      if not session.get('admin_logged_in'):
-        flash('Debes iniciar sesión para acceder a los reportes', 'error')
+        
         return redirect(url_for('admin_login'))
      
      empresas = list_companies_use_case.execute()
